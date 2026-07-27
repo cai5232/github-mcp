@@ -253,4 +253,99 @@ async function handleTool(name, args) {
       const branch = args.branch || 'main';
       const data = await gh(`/repos/${o}/${args.repo}/contents/${args.path}?ref=${branch}`);
       const original = Buffer.from(data.content, 'base64').toString('utf-8');
-      const count = original.split(args.old_str).length -
+      const count = original.split(args.old_str).length - 1;
+      if (count === 0) throw new Error(`未找到匹配内容：${args.old_str}`);
+      if (count > 1) throw new Error(`找到 ${count} 处匹配，请在 old_str 中提供更多上下文使其唯一`);
+      const newContent = original.replace(args.old_str, args.new_str || '');
+      await commitFiles(args.repo, args.message, [{ path: args.path, content: newContent }], o);
+      return `已修改 ${args.path}\ncommit 信息：${args.message}`;
+    }
+
+    case 'delete_files': {
+      const ref = await gh(`/repos/${o}/${args.repo}/git/ref/heads/main`);
+      const baseSha = ref.object.sha;
+      const commit = await gh(`/repos/${o}/${args.repo}/git/commits/${baseSha}`);
+      const baseTreeSha = commit.tree.sha;
+      const treeItems = args.paths.map(p => ({ path: p, mode: '100644', type: 'blob', sha: null }));
+      const tree = await gh(`/repos/${o}/${args.repo}/git/trees`, {
+        method: 'POST',
+        body: { base_tree: baseTreeSha, tree: treeItems }
+      });
+      const newCommit = await gh(`/repos/${o}/${args.repo}/git/commits`, {
+        method: 'POST',
+        body: { message: args.message, tree: tree.sha, parents: [baseSha] }
+      });
+      await gh(`/repos/${o}/${args.repo}/git/refs/heads/main`, {
+        method: 'PATCH',
+        body: { sha: newCommit.sha }
+      });
+      return `已删除 ${args.paths.length} 个文件：${args.paths.join(', ')}`;
+    }
+
+    case 'delete_repo': {
+      if (args.confirm !== args.repo) throw new Error('confirm 与 repo 不一致，操作已取消');
+      await gh(`/repos/${o}/${args.repo}`, { method: 'DELETE' });
+      return `仓库 ${args.repo} 已删除`;
+    }
+
+    default:
+      throw new Error(`未知工具：${name}`);
+  }
+}
+
+function createServer() {
+  const server = new Server(
+    { name: 'github-mcp', version: '1.0.0' },
+    { capabilities: { tools: {} } }
+  );
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+    try {
+      const result = await handleTool(req.params.name, req.params.arguments);
+      return { content: [{ type: 'text', text: result }] };
+    } catch (e) {
+      return { content: [{ type: 'text', text: `错误：${e.message}` }], isError: true };
+    }
+  });
+
+  return server;
+}
+
+const sessions = new Map();
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', version: '1.0.0', owner: GITHUB_OWNER });
+});
+
+app.all('/mcp', async (req, res) => {
+  const server = createServer();
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  await server.connect(transport);
+  await transport.handleRequest(req, res, req.body);
+  await server.close();
+});
+
+app.get('/sse', async (req, res) => {
+  const server = createServer();
+  const transport = new SSEServerTransport('/messages', res);
+  sessions.set(transport.sessionId, { server, transport });
+  res.on('close', () => {
+    sessions.delete(transport.sessionId);
+    server.close();
+  });
+  await server.connect(transport);
+});
+
+app.post('/messages', async (req, res) => {
+  const sessionId = req.query.sessionId;
+  const session = sessions.get(sessionId);
+  if (!session) return res.status(404).json({ error: 'session not found' });
+  await session.transport.handlePostMessage(req, res, req.body);
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ GitHub MCP v1.0.0 running on port ${PORT}`);
+  console.log(`   Tools: ${tools.map(t => t.name).join(', ')}`);
+});
