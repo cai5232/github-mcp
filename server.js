@@ -347,11 +347,6 @@ app.post('/messages', async (req, res) => {
   await session.transport.handlePostMessage(req, res, req.body);
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ GitHub MCP v1.0.0 running on port ${PORT}`);
-  console.log(`   Tools: ${tools.map(t => t.name).join(', ')}`);
-});
-
 app.post('/api/patch', async (req, res) => {
   try {
     const { repo, path, old_str, new_str, message, owner, branch: br } = req.body;
@@ -368,4 +363,9 @@ app.post('/api/patch', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ GitHub MCP v1.0.0 running on port ${PORT}`);
+  console.log(`   Tools: ${tools.map(t => t.name).join(', ')}`);
 });
