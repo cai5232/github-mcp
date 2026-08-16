@@ -339,6 +339,8 @@ app.get('/sse', async (req, res) => {
 });
 
 app.post('/messages', async (req, res) => {
+  res.setTimeout(120000);
+  req.setTimeout && req.setTimeout(120000);
   const sessionId = req.query.sessionId;
   const session = sessions.get(sessionId);
   if (!session) return res.status(404).json({ error: 'session not found' });
