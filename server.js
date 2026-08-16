@@ -351,3 +351,20 @@ app.listen(PORT, () => {
   console.log(`✅ GitHub MCP v1.0.0 running on port ${PORT}`);
   console.log(`   Tools: ${tools.map(t => t.name).join(', ')}`);
 });
+app.post('/api/patch', async (req, res) => {
+  try {
+    const { repo, path, old_str, new_str, message, owner, branch: br } = req.body;
+    const o = owner || GITHUB_OWNER;
+    const branch = br || 'main';
+    const data = await gh(`/repos/${o}/${repo}/contents/${path}?ref=${branch}`);
+    const original = Buffer.from(data.content, 'base64').toString('utf-8');
+    const count = original.split(old_str).length - 1;
+    if (count === 0) return res.status(400).json({ error: '未找到匹配内容' });
+    if (count > 1) return res.status(400).json({ error: `找到 ${count} 处匹配` });
+    const newContent = original.replace(old_str, new_str || '');
+    const commit = await commitFiles(repo, message || 'patch', [{ path, content: newContent }], o);
+    res.json({ ok: true, sha: commit.sha });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
