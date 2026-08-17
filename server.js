@@ -24,6 +24,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const PORT = process.env.PORT || 3000;
 const chunkUploads = new Map();
+const CHUNK_UPLOAD_TTL_MS = 30 * 60 * 1000;
 
 async function gh(path, options = {}) {
   const url = `https://api.github.com${path}`;
