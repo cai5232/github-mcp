@@ -26,6 +26,11 @@ const PORT = process.env.PORT || 3000;
 const chunkUploads = new Map();
 const CHUNK_UPLOAD_TTL_MS = 30 * 60 * 1000;
 
+function joinChunkContent(upload) {
+  return Object.keys(upload.chunks).map(Number).sort((a, b) => a - b)
+    .map(index => upload.chunks[index]).join('');
+}
+
 function getChunkUpload(id) {
   const upload = chunkUploads.get(id);
   if (!upload) throw new Error('Chunk upload not found');
