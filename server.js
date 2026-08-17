@@ -23,6 +23,7 @@ app.use((req, res, next) => {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const PORT = process.env.PORT || 3000;
+const chunkUploads = new Map();
 
 async function gh(path, options = {}) {
   const url = `https://api.github.com${path}`;
