@@ -31,6 +31,10 @@ function joinChunkContent(upload) {
     .map(index => upload.chunks[index]).join('');
 }
 
+function hasAllChunks(upload) {
+  return Object.keys(upload.chunks).length === upload.total;
+}
+
 function getChunkUpload(id) {
   const upload = chunkUploads.get(id);
   if (!upload) throw new Error('Chunk upload not found');
