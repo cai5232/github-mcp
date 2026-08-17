@@ -27,7 +27,9 @@ const chunkUploads = new Map();
 const CHUNK_UPLOAD_TTL_MS = 30 * 60 * 1000;
 
 function getChunkUpload(id) {
-  return chunkUploads.get(id);
+  const upload = chunkUploads.get(id);
+  if (!upload) throw new Error('Chunk upload not found');
+  return upload;
 }
 
 async function gh(path, options = {}) {
