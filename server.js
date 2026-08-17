@@ -51,7 +51,23 @@ function getOwner(args) {
 
 async function commitFiles(repo, message, files, ownerName) {
   const o = ownerName || GITHUB_OWNER;
-  const ref = await gh(`/repos/${o}/${repo}/git/ref/heads/main`);
+  let ref;
+  try {
+    ref = await gh(`/repos/${o}/${repo}/git/ref/heads/main`);
+  } catch (error) {
+    // GitHub creates a repository without a branch when it is empty. Seed it
+    // through the Contents API so the normal tree-based commit can continue.
+    if (!files.length) throw error;
+    const first = files[0];
+    await gh(`/repos/${o}/${repo}/contents/${first.path}`, {
+      method: 'PUT',
+      body: {
+        message,
+        content: Buffer.from(first.content, 'utf8').toString('base64')
+      }
+    });
+    ref = await gh(`/repos/${o}/${repo}/git/ref/heads/main`);
+  }
   const baseSha = ref.object.sha;
   const commit = await gh(`/repos/${o}/${repo}/git/commits/${baseSha}`);
   const baseTreeSha = commit.tree.sha;
