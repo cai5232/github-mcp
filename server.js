@@ -49,6 +49,32 @@ function getOwner(args) {
   return args?.owner || GITHUB_OWNER;
 }
 
+async function uploadFilesWithContents(repo, message, files, ownerName) {
+  const o = ownerName || GITHUB_OWNER;
+  const results = [];
+  for (const file of files) {
+    const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
+    let sha;
+    try {
+      const existing = await gh(`/repos/${o}/${repo}/contents/${encodedPath}?ref=main`);
+      if (existing && !Array.isArray(existing)) sha = existing.sha;
+    } catch (error) {
+      if (!String(error.message).toLowerCase().includes('not found')) throw error;
+    }
+    const body = {
+      message,
+      content: Buffer.from(file.content, 'utf8').toString('base64')
+    };
+    if (sha) body.sha = sha;
+    const result = await gh(`/repos/${o}/${repo}/contents/${encodedPath}`, {
+      method: 'PUT',
+      body
+    });
+    results.push(result.commit?.sha || result.content?.sha);
+  }
+  return results[results.length - 1];
+}
+
 async function commitFiles(repo, message, files, ownerName) {
   const o = ownerName || GITHUB_OWNER;
   let ref;
