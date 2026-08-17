@@ -286,12 +286,12 @@ async function handleTool(name, args) {
       return Buffer.from(data.content, 'base64').toString('utf-8');
     }
 
-    case 'push_files': {
-      const commit = await commitFiles(args.repo, args.message, args.files, o);
-      return `已推送 ${args.files.length} 个文件\ncommit：${commit.sha}\n信息：${args.message}`;
+        case 'push_files': {
+      const commitSha = await uploadFilesWithContents(args.repo, args.message, args.files, o);
+      return `已推送 ${args.files.length} 个文件\ncommit：${commitSha}\n信息：${args.message}`;
     }
-
-    case 'patch_file': {
+    
+      case 'patch_file': {
       const branch = args.branch || 'main';
       const data = await gh(`/repos/${o}/${args.repo}/contents/${args.path}?ref=${branch}`);
       const original = Buffer.from(data.content, 'base64').toString('utf-8');
