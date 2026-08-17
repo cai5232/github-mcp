@@ -40,6 +40,11 @@ function storeChunk(id, meta, index, content) {
   return upload;
 }
 
+function joinChunks(upload) {
+  return Object.keys(upload.chunks).map(Number).sort((a, b) => a - b)
+    .map(index => upload.chunks[index]).join('');
+}
+
 async function gh(path, options = {}) {
   const url = `https://api.github.com${path}`;
   const res = await fetch(url, {
