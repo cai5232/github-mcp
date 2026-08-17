@@ -32,6 +32,14 @@ function getChunkUpload(id) {
   return upload;
 }
 
+function storeChunk(id, meta, index, content) {
+  const upload = chunkUploads.get(id) || { ...meta, chunks: {} };
+  upload.chunks[index] = content;
+  upload.updatedAt = Date.now();
+  chunkUploads.set(id, upload);
+  return upload;
+}
+
 async function gh(path, options = {}) {
   const url = `https://api.github.com${path}`;
   const res = await fetch(url, {
