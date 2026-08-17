@@ -26,6 +26,10 @@ const PORT = process.env.PORT || 3000;
 const chunkUploads = new Map();
 const CHUNK_UPLOAD_TTL_MS = 30 * 60 * 1000;
 
+function getChunkUpload(id) {
+  return chunkUploads.get(id);
+}
+
 async function gh(path, options = {}) {
   const url = `https://api.github.com${path}`;
   const res = await fetch(url, {
