@@ -15,6 +15,16 @@ app.use((req, res, next) => {
   next();
 });
 
+const MCP_AUTH_TOKEN = process.env.MCP_AUTH_TOKEN;
+
+app.use((req, res, next) => {
+  if (req.path === '/health' || req.method === 'OPTIONS') return next();
+  if (!['/mcp', '/sse', '/messages', '/api/patch'].includes(req.path)) return next();
+  if (!MCP_AUTH_TOKEN) return res.status(503).json({ error: 'MCP authentication is not configured' });
+  if (req.get('authorization') !== `Bearer ${MCP_AUTH_TOKEN}`) return res.status(401).json({ error: 'unauthorized' });
+  next();
+});
+
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
   next();
