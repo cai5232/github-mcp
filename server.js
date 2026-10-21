@@ -405,8 +405,8 @@ app.all('/mcp', async (req, res) => {
   const server = createServer();
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   await server.connect(transport);
+  res.on('close', () => server.close());
   await transport.handleRequest(req, res, req.body);
-  await server.close();
 });
 
 app.get('/sse', async (req, res) => {
